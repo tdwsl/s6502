@@ -1,3 +1,5 @@
+/* s6502 - tdwsl 2022 */
+
 #ifndef OPCODES_H
 #define OPCODES_H
 

@@ -1,3 +1,5 @@
+/* s6502 - tdwsl 2022 */
+
 #ifndef FLAGS_H
 #define FLAGS_H
 

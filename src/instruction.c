@@ -1,3 +1,5 @@
+/* s6502 - tdwsl 2022 */
+
 #include <stdlib.h>
 #include <stdbool.h>
 #include "s6502.h"

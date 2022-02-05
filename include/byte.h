@@ -1,3 +1,5 @@
+/* s6502 - tdwsl 2022 */
+
 #ifndef BYTE_H
 #define BYTE_H
 

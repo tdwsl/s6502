@@ -1,3 +1,5 @@
+/* s6502 - tdwsl 2022 */
+
 #ifndef S6502_H
 #define S6502_H
 
