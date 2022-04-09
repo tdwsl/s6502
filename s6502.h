@@ -1,12 +1,235 @@
-/* s6502 - tdwsl 2022 */
+/* s6502 - tdwsl 2022
+ *
+ * This is a simple 6502 emulator that I wrote
+ * a while back. I decided to put it all into
+ * a single header, that way I might actually
+ * use it sometime.
+ *
+ */
 
-#include <stdlib.h>
+#ifndef S6502
+
+#include <stdint.h>
+#include <stdio.h>
 #include <stdbool.h>
-#include "s6502.h"
-#include "instruction.h"
-#include "byte.h"
-#include "flags.h"
-#include "opcodes.h"
+
+#define getWord(h, l) ( (((word)(h)) << 8) | (word)(l) )
+
+typedef unsigned char byte;
+typedef uint16_t word;
+
+/* OPCODES */
+
+enum {
+	BRK       = 0x00,
+	ORA_ind_X = 0x01,
+	ORA_zpg   = 0x05,
+	ASL_zpg   = 0x06,
+	PHP       = 0x08,
+	ORA_imm   = 0x09,
+	ASL_A     = 0x0A,
+	ORA_abs   = 0x0D,
+	ASL_abs   = 0x0E,
+	BPL       = 0x10,
+	ORA_ind_Y = 0x11,
+	ORA_zpg_X = 0x15,
+	ASL_zpg_X = 0x16,
+	CLC       = 0x18,
+	ORA_abs_Y = 0x19,
+	ORA_abs_X = 0x1D,
+	ASL_abs_X = 0x1E,
+	JSR       = 0x20,
+	AND_ind_X = 0x21,
+	BIT_zpg   = 0x24,
+	AND_zpg   = 0x25,
+	ROL_zpg   = 0x26,
+	PLP       = 0x28,
+	AND_imm   = 0x29,
+	ROL_A     = 0x2A,
+	BIT_abs   = 0x2C,
+	AND_abs   = 0x2D,
+	ROL_abs   = 0x2E,
+	BMI       = 0x30,
+	AND_ind_Y = 0x31,
+	AND_zpg_X = 0x35,
+	ROL_zpg_X = 0x36,
+	SEC       = 0x38,
+	AND_abs_Y = 0x39,
+	AND_abs_X = 0x3D,
+	ROL_abs_X = 0x3E,
+	RTI       = 0x40,
+	EOR_ind_X = 0x41,
+	EOR_zpg   = 0x45,
+	LSR_zpg   = 0x46,
+	PHA       = 0x48,
+	EOR_imm   = 0x49,
+	LSR_A     = 0x4A,
+	JMP_abs   = 0x4C,
+	EOR_abs   = 0x4D,
+	LSR_abs   = 0x4E,
+	BVC       = 0x50,
+	EOR_ind_Y = 0x51,
+	EOR_zpg_X = 0x55,
+	LSR_zpg_X = 0x56,
+	CLI       = 0x58,
+	EOR_abs_Y = 0x59,
+	EOR_abs_X = 0x5D,
+	LSR_abs_X = 0x5E,
+	RTS       = 0x60,
+	ADC_ind_X = 0x61,
+	ADC_zpg   = 0x65,
+	ROR_zpg   = 0x66,
+	PLA       = 0x68,
+	ADC_imm   = 0x69,
+	ROR_A     = 0x6A,
+	JMP_ind   = 0x6C,
+	ADC_abs   = 0x6D,
+	ROR_abs   = 0x6E,
+	BVS       = 0x70,
+	ADC_ind_Y = 0x71,
+	ADC_zpg_X = 0x75,
+	ROR_zpg_X = 0x76,
+	SEI       = 0x78,
+	ADC_abs_Y = 0x79,
+	ADC_abs_X = 0x7D,
+	ROR_abs_X = 0x7E,
+	STA_ind_X = 0x81,
+	STY_zpg   = 0x84,
+	STA_zpg   = 0x85,
+	STX_zpg   = 0x86,
+	DEY       = 0x88,
+	TXA       = 0x8A,
+	STY_abs   = 0x8C,
+	STA_abs   = 0x8D,
+        STX_abs   = 0x8E,
+	BCC       = 0x90,
+	STA_ind_Y = 0x91,
+	STY_zpg_X = 0x94,
+	STA_zpg_X = 0x95,
+	STX_zpg_Y = 0x96,
+	TYA       = 0x98,
+	STA_abs_Y = 0x99,
+	TXS       = 0x9A,
+	STA_abs_X = 0x9D,
+	LDY_imm   = 0xA0,
+	LDA_ind_X = 0xA1,
+	LDX_imm   = 0xA2,
+	LDY_zpg   = 0xA4,
+	LDA_zpg   = 0xA5,
+	LDX_zpg   = 0xA6,
+	TAY       = 0xA8,
+	LDA_imm   = 0xA9,
+	TAX       = 0xAA,
+	LDY_abs   = 0xAC,
+	LDA_abs   = 0xAD,
+	LDX_abs   = 0xAE,
+	BCS       = 0xB0,
+	LDA_ind_Y = 0xB1,
+	LDY_zpg_X = 0xB4,
+	LDA_zpg_X = 0xB5,
+	LDX_zpg_Y = 0xB6,
+	CLV       = 0xB8,
+	LDA_abs_Y = 0xB9,
+	TSX       = 0xBA,
+	LDY_abs_X = 0xBC,
+	LDA_abs_X = 0xBD,
+	LDX_abs_Y = 0xBE,
+	CPY_imm   = 0xC0,
+	CMP_ind_X = 0xC1,
+	CPY_zpg   = 0xC4,
+	CMP_zpg   = 0xC5,
+	DEC_zpg   = 0xC6,
+	INY       = 0xC8,
+	CMP_imm   = 0xC9,
+	DEX       = 0xCA,
+	CPY_abs   = 0xCC,
+	CMP_abs   = 0xCD,
+	DEC_abs   = 0xCE,
+	BNE       = 0xD0,
+	CMP_ind_Y = 0xD1,
+	CMP_zpg_X = 0xD5,
+	DEC_zpg_X = 0xD6,
+	CLD       = 0xD8,
+	CMP_abs_Y = 0xD9,
+	CMP_abs_X = 0xDD,
+	DEC_abs_X = 0xDE,
+	CPX_imm   = 0xE0,
+	SBC_ind_X = 0xE1,
+	CPX_zpg   = 0xE4,
+	SBC_zpg   = 0xE5,
+	INC_zpg   = 0xE6,
+	INX       = 0xE8,
+	SBC_imm   = 0xE9,
+	NOP       = 0xEA,
+	CPX_abs   = 0xEC,
+	SBC_abs   = 0xED,
+	INC_abs   = 0xEE,
+	BEQ       = 0xF0,
+	SBC_ind_Y = 0xF1,
+	SBC_zpg_X = 0xF5,
+	INC_zpg_X = 0xF6,
+	SED       = 0xF8,
+	SBC_abs_Y = 0xF9,
+	SBC_abs_X = 0xFD,
+	INC_abs_X = 0xFE,
+};
+
+/* FLAGS */
+
+enum {
+	f_N = 0x80, /* negative */
+	f_V = 0x40, /* overflow */
+	f_BH= 0x20, /* hi-bit of b flag */
+	f_BL= 0x10, /* lo-bit of b flag */
+	f_D = 0x08, /* decimal */
+	f_I = 0x04, /* interrupt disable */
+	f_Z = 0x02, /* zero */
+	f_C = 0x01, /* carry */
+};
+
+/* REGISTERS */
+
+byte r_X, r_Y, r_A;
+byte r_SP, r_F;
+word r_PC;
+
+/* memory - only supports 64k for now */
+
+byte memory[0xFFFF+1];
+
+/* some neat utility functions */
+
+void printRegisters() {
+	printf("X: $%.2X  Y:$%.2X  a:$%.2X\n", r_X, r_Y, r_A);
+	printf("SP: $%.2X PC: $%.4X\n", r_SP, r_PC);
+	/* flags */
+	printf("NV--DIZC\n");
+	byte b = 0x80;
+	for(int i = 0; i < 8; i++) {
+		printf("%u", (bool)(b&r_F));
+		b >>= 1;
+	}
+	printf("\n");
+}
+
+void loadPrg(const char *filename) {
+	FILE *fp = fopen(filename, "rb");
+	if(!fp) {
+		printf("Failed to load '%s'\n", filename);
+		return;
+	}
+	byte h, l;
+	fread(&l, 1, 1, fp);
+	fread(&h, 1, 1, fp);
+	r_PC = getWord(h, l);
+
+	for(int i = 0; !feof(fp); i++)
+		fread(&memory[r_PC+i], 1, 1, fp);
+
+	fclose(fp);
+}
+
+/** DEFINITION OF INSTRUCTIONS **/
 
 void setFlags(byte b) {
 	if(!b)
@@ -812,3 +1035,9 @@ bool doInstruction(byte *ptr) {
 
 	return true;
 }
+
+/* key way the program is executed */
+
+#define step() doInstruction(&memory[r_PC])
+
+#endif

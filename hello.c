@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include "s6502.h"
-#include "opcodes.h"
 
 int main() {
-	loadPrg("test2.bin");
+	loadPrg("hello.bin");
 	memory[0xF000] = RTS;
 	while(step()) {
 		switch(r_PC) {
@@ -12,5 +11,6 @@ int main() {
 			break;
 		}
 	}
+	printRegisters();
 	return 0;
 }
